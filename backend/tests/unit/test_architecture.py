@@ -43,3 +43,32 @@ def test_inner_layer_only_depends_inward(layer: str) -> None:
     ]
 
     assert violations == []
+
+
+def starts_with_any(module: str, prefixes: tuple[str, ...]) -> bool:
+    return any(module == prefix or module.startswith(prefix + ".") for prefix in prefixes)
+
+
+# HTTP handlers talk to use cases only; storage and security adapters are wired in
+# the composition root, never imported by a handler.
+HANDLER_FORBIDDEN = (
+    "sqlalchemy",
+    "alembic",
+    "bcrypt",
+    "jwt",
+    "src.infrastructure",
+    "src.interface.repositories",
+    "src.shared",
+    "src.config",
+)
+
+
+def test_handlers_do_not_reach_storage_or_adapters() -> None:
+    violations = [
+        f"{path.relative_to(SRC)}: {module}"
+        for path in (SRC / "interface" / "handlers").rglob("*.py")
+        for module in imported_modules(path)
+        if starts_with_any(module, HANDLER_FORBIDDEN)
+    ]
+
+    assert violations == []
