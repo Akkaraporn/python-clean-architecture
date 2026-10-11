@@ -1,13 +1,16 @@
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
-from pydantic import Field, PostgresDsn, SecretStr, field_validator
+from pydantic import Field, PostgresDsn, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 # Local runs start from backend/, but the single .env lives at the repo root next to
 # docker-compose.yml. A missing file is ignored, so containers rely on real env vars.
 REPO_ROOT_ENV_FILE = Path(__file__).resolve().parents[3] / ".env"
+
+# An HMAC key should be at least as long as the hash output (RFC 7518 section 3.2).
+MIN_SECRET_LENGTH = {"HS256": 32, "HS384": 48, "HS512": 64}
 
 
 class Settings(BaseSettings):
@@ -21,8 +24,7 @@ class Settings(BaseSettings):
 
     database_url: PostgresDsn
 
-    # HS256 needs a key of at least 256 bits (RFC 7518 section 3.2).
-    jwt_secret: SecretStr = Field(min_length=32)
+    jwt_secret: SecretStr = Field(min_length=MIN_SECRET_LENGTH["HS256"])
     # Whitelisting HMAC algorithms rules out "none" and asymmetric algorithms
     # that would need a different key setup.
     jwt_algorithm: Literal["HS256", "HS384", "HS512"] = "HS256"
@@ -30,6 +32,15 @@ class Settings(BaseSettings):
 
     # NoDecode lets us accept a plain comma-separated value instead of a JSON array.
     cors_origins: Annotated[list[str], NoDecode] = []
+
+    @model_validator(mode="after")
+    def secret_is_long_enough_for_algorithm(self) -> Self:
+        required = MIN_SECRET_LENGTH[self.jwt_algorithm]
+        if len(self.jwt_secret.get_secret_value()) < required:
+            raise ValueError(
+                f"JWT_SECRET must be at least {required} characters for {self.jwt_algorithm}"
+            )
+        return self
 
     @field_validator("cors_origins", mode="before")
     @classmethod

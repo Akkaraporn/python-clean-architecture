@@ -41,13 +41,14 @@ def test_reads_and_converts_values_from_environment(
     required_env: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("JWT_ALGORITHM", "HS512")
+    monkeypatch.setenv("JWT_SECRET", "y" * 64)
     monkeypatch.setenv("JWT_EXPIRE_MINUTES", "45")
     monkeypatch.setenv("CORS_ORIGINS", "http://localhost:5173, http://example.com")
 
     settings = load()
 
     assert str(settings.database_url) == VALID_DB_URL
-    assert settings.jwt_secret.get_secret_value() == VALID_SECRET
+    assert settings.jwt_secret.get_secret_value() == "y" * 64
     assert settings.jwt_algorithm == "HS512"
     assert settings.jwt_expire_minutes == 45
     assert settings.cors_origins == ["http://localhost:5173", "http://example.com"]
@@ -119,6 +120,20 @@ def test_invalid_value_is_rejected(
 
     with pytest.raises(ValidationError):
         load()
+
+
+@pytest.mark.parametrize(("algorithm", "min_length"), [("HS384", 48), ("HS512", 64)])
+def test_stronger_algorithm_requires_longer_secret(
+    required_env: None, monkeypatch: pytest.MonkeyPatch, algorithm: str, min_length: int
+) -> None:
+    monkeypatch.setenv("JWT_ALGORITHM", algorithm)
+
+    monkeypatch.setenv("JWT_SECRET", "z" * (min_length - 1))
+    with pytest.raises(ValidationError, match=f"at least {min_length}"):
+        load()
+
+    monkeypatch.setenv("JWT_SECRET", "z" * min_length)
+    assert load().jwt_algorithm == algorithm
 
 
 def test_secret_is_hidden_from_repr(required_env: None) -> None:

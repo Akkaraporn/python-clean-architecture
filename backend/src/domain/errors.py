@@ -27,3 +27,13 @@ class UserNotFoundError(DomainError):
     def __init__(self, user_id: UUID) -> None:
         super().__init__(f"User '{user_id}' was not found")
         self.user_id = user_id
+
+
+class InvalidTokenError(DomainError):
+    def __init__(self, reason: str = "Invalid token") -> None:
+        super().__init__(reason)
+
+
+class ExpiredTokenError(InvalidTokenError):
+    def __init__(self) -> None:
+        super().__init__("Token has expired")
