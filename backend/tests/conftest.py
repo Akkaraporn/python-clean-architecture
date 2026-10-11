@@ -1,4 +1,4 @@
-"""PostgreSQL fixtures for integration tests.
+"""PostgreSQL fixtures shared by the integration and API tests.
 
 Tests run against a dedicated `<db>_test` database (or TEST_DATABASE_URL) that is
 created and migrated with Alembic on first use. Each test runs inside a transaction
@@ -13,14 +13,14 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import URL, Engine, create_engine, make_url, text
+from sqlalchemy import URL, Connection, Engine, create_engine, make_url, text
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from src.infrastructure.database.postgres import create_db_engine
 
 MIGRATIONS_DIR = (
-    Path(__file__).resolve().parents[2] / "src/infrastructure/database/postgres/migrations"
+    Path(__file__).resolve().parents[1] / "src/infrastructure/database/postgres/migrations"
 )
 
 
@@ -48,13 +48,13 @@ def _create_database_if_missing(url: URL) -> None:
         admin_engine.dispose()
 
 
-def _migrate(url: URL) -> None:
+def alembic_config(url: URL) -> Config:
     # Built in code rather than from alembic.ini so Alembic does not reconfigure
     # logging for the whole test session.
     config = Config()
     config.set_main_option("script_location", str(MIGRATIONS_DIR))
     config.cmd_opts = Namespace(x=[f"database_url={url.render_as_string(hide_password=False)}"])
-    command.upgrade(config, "head")
+    return config
 
 
 @pytest.fixture(scope="session")
@@ -64,7 +64,7 @@ def db_engine() -> Iterator[Engine]:
         _create_database_if_missing(url)
     except OperationalError as exc:
         pytest.skip(f"PostgreSQL is not reachable ({exc.orig}); run: docker compose up -d db")
-    _migrate(url)
+    command.upgrade(alembic_config(url), "head")
 
     engine = create_db_engine(url.render_as_string(hide_password=False))
     yield engine
@@ -72,20 +72,30 @@ def db_engine() -> Iterator[Engine]:
 
 
 @pytest.fixture
-def db_session(db_engine: Engine) -> Iterator[Session]:
+def db_connection(db_engine: Engine) -> Iterator[Connection]:
+    """A connection whose transaction is always rolled back when the test ends."""
     connection = db_engine.connect()
     outer = connection.begin()
-    # Commits or rollbacks made by code under test only touch savepoints;
-    # the outer transaction is always rolled back below.
-    session = Session(
-        bind=connection,
+    try:
+        yield connection
+    finally:
+        outer.rollback()
+        connection.close()
+
+
+@pytest.fixture
+def test_session_factory(db_connection: Connection) -> sessionmaker[Session]:
+    # Sessions join the test transaction through savepoints: code under test can
+    # commit or roll back as usual, and the outer rollback still discards everything.
+    return sessionmaker(
+        bind=db_connection,
         join_transaction_mode="create_savepoint",
         autoflush=False,
         expire_on_commit=False,
     )
-    try:
+
+
+@pytest.fixture
+def db_session(test_session_factory: sessionmaker[Session]) -> Iterator[Session]:
+    with test_session_factory() as session:
         yield session
-    finally:
-        session.close()
-        outer.rollback()
-        connection.close()
