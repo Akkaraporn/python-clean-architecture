@@ -12,7 +12,11 @@ export function AppLayout() {
           Clean Architecture Demo
         </Link>
         <nav aria-label="บัญชีผู้ใช้" className="app-nav">
-          {status === 'authenticated' && user && <span className="muted">{user.email}</span>}
+          {status === 'authenticated' && user && (
+            <NavLink to="/profile" title={user.email}>
+              โปรไฟล์
+            </NavLink>
+          )}
           {status === 'unauthenticated' && (
             <>
               <NavLink to="/login">เข้าสู่ระบบ</NavLink>

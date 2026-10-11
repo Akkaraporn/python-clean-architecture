@@ -11,6 +11,9 @@ export function HomePage() {
         <>
           <h1>สวัสดี, {user.full_name}</h1>
           <p>คุณเข้าสู่ระบบแล้วด้วย {user.email}</p>
+          <p>
+            <Link to="/profile">ดูโปรไฟล์</Link>
+          </p>
         </>
       ) : (
         <>

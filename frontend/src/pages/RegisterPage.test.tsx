@@ -71,18 +71,19 @@ describe('RegisterPage', () => {
     expect(errorFor('ยืนยันรหัสผ่าน')).toBeNull()
   })
 
-  it('creates the account, signs in and goes home', async () => {
+  it('creates the account, signs in and opens the profile', async () => {
     const fetchMock = mockFetch(
       jsonResponse(201, JANE),
       jsonResponse(200, { access_token: 'new-token', token_type: 'bearer' }),
+      jsonResponse(200, JANE),
       jsonResponse(200, JANE),
     )
     const { user, router } = renderApp('/register')
 
     await fillAndSubmit(user)
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
-    expect(await screen.findByText('สวัสดี, Jane Doe')).toBeTruthy()
+    await waitFor(() => expect(router.state.location.pathname).toBe('/profile'))
+    expect(await screen.findByText('Jane Doe')).toBeTruthy()
     // The confirmation is checked in the browser and never sent.
     expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(
       JSON.stringify({ email: 'jane@example.com', password: 's3cret-pass', full_name: 'Jane Doe' }),

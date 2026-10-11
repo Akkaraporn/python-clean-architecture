@@ -1,5 +1,5 @@
 import { type ChangeEvent, type FormEvent, useState } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../features/auth'
 import { FormAlert } from '../features/auth/components/FormAlert'
@@ -14,12 +14,15 @@ import {
   type LoginValues,
   validateLogin,
 } from '../features/auth/validation'
+import { redirectTarget } from '../routes/redirect'
 
 const EMPTY: LoginValues = { email: '', password: '' }
 
 export function LoginPage() {
   const { status, login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const target = redirectTarget(location.state)
 
   const [values, setValues] = useState<LoginValues>(EMPTY)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors<LoginField>>({})
@@ -28,7 +31,7 @@ export function LoginPage() {
   const [attempted, setAttempted] = useState(false)
 
   if (status === 'authenticated') {
-    return <Navigate to="/" replace />
+    return <Navigate to={target} replace />
   }
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
@@ -55,7 +58,7 @@ export function LoginPage() {
     setSubmitting(true)
     try {
       await login({ email: values.email.trim(), password: values.password })
-      navigate('/', { replace: true })
+      navigate(target, { replace: true })
     } catch (error) {
       const described = describeAuthError(error, LOGIN_FIELDS)
       setFieldErrors(described.fieldErrors)

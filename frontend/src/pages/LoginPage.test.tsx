@@ -32,7 +32,12 @@ describe('LoginPage', () => {
   })
 
   it('can be filled and submitted with the keyboard alone', async () => {
-    const fetchMock = mockFetch(jsonResponse(200, TOKEN), jsonResponse(200, JANE))
+    // token, /me for the session, /me again for the profile page
+    const fetchMock = mockFetch(
+      jsonResponse(200, TOKEN),
+      jsonResponse(200, JANE),
+      jsonResponse(200, JANE),
+    )
     const { user, router } = renderApp('/login')
 
     await user.click(screen.getByLabelText('อีเมล'))
@@ -40,8 +45,8 @@ describe('LoginPage', () => {
     await user.tab()
     await user.keyboard('s3cret-pass{Enter}')
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
-    expect(await screen.findByText('สวัสดี, Jane Doe')).toBeTruthy()
+    await waitFor(() => expect(router.state.location.pathname).toBe('/profile'))
+    expect(await screen.findByText('Jane Doe')).toBeTruthy()
     expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(
       JSON.stringify({ email: 'jane@example.com', password: 's3cret-pass' }),
     )
@@ -101,11 +106,11 @@ describe('LoginPage', () => {
     await waitFor(() => expect(submitButton().hasAttribute('disabled')).toBe(false))
   })
 
-  it('sends a signed-in user straight to the home page', async () => {
+  it('sends a signed-in user straight to their profile', async () => {
     tokenStorage.set('stored-token')
-    mockFetch(jsonResponse(200, JANE))
+    mockFetch(jsonResponse(200, JANE), jsonResponse(200, JANE))
     const { router } = renderApp('/login')
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/profile'))
   })
 })

@@ -15,6 +15,7 @@ import {
   type RegisterValues,
   validateRegister,
 } from '../features/auth/validation'
+import { DEFAULT_AFTER_LOGIN } from '../routes/redirect'
 
 const EMPTY: RegisterValues = { full_name: '', email: '', password: '', confirmPassword: '' }
 
@@ -29,7 +30,7 @@ export function RegisterPage() {
   const [attempted, setAttempted] = useState(false)
 
   if (status === 'authenticated') {
-    return <Navigate to="/" replace />
+    return <Navigate to={DEFAULT_AFTER_LOGIN} replace />
   }
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
@@ -60,7 +61,7 @@ export function RegisterPage() {
         password: values.password,
         full_name: values.full_name.trim(),
       })
-      navigate('/', { replace: true })
+      navigate(DEFAULT_AFTER_LOGIN, { replace: true })
     } catch (error) {
       const described = describeAuthError(error, REGISTER_FIELDS)
       setFieldErrors(described.fieldErrors)
