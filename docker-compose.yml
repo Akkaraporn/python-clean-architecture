@@ -15,5 +15,24 @@ services:
       timeout: 3s
       retries: 10
 
+  backend:
+    build: ./backend
+    environment:
+      # Inside the compose network the database is reached by service name, not localhost.
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-app}
+      # No default on purpose: refuse to start with a well-known signing key.
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (see .env.example)}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-30}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      db:
+        # Wait for pg_isready, not just for the container to exist.
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   pgdata:

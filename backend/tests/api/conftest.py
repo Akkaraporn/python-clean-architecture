@@ -15,6 +15,7 @@ from src.shared.security import BcryptPasswordHasher, JwtTokenService
 
 JWT_SECRET = "api-test-secret-that-is-long-enough-for-hs256"
 PASSWORD = "s3cret-pass"
+ALLOWED_ORIGIN = "http://localhost:5173"
 
 # One instance for the whole run: minimum bcrypt cost keeps the suite fast, and a
 # stable instance lets LoginUser reuse its cached dummy hash.
@@ -28,6 +29,7 @@ def settings(db_engine: Engine) -> Settings:
         database_url=db_engine.url.render_as_string(hide_password=False),
         jwt_secret=JWT_SECRET,
         jwt_expire_minutes=30,
+        cors_origins=[ALLOWED_ORIGIN],
     )
 
 

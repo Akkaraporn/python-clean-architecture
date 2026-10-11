@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     # NoDecode lets us accept a plain comma-separated value instead of a JSON array.
     cors_origins: Annotated[list[str], NoDecode] = []
 
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+
     @model_validator(mode="after")
     def secret_is_long_enough_for_algorithm(self) -> Self:
         required = MIN_SECRET_LENGTH[self.jwt_algorithm]
@@ -48,6 +50,25 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
+
+    @field_validator("cors_origins")
+    @classmethod
+    def origins_are_explicit(cls, origins: list[str]) -> list[str]:
+        normalized = []
+        for origin in origins:
+            if origin == "*":
+                raise ValueError("list allowed origins explicitly instead of '*'")
+            if not origin.startswith(("http://", "https://")):
+                raise ValueError(f"origin must start with http:// or https://: {origin!r}")
+            # Browsers send the Origin header without a trailing slash, so
+            # "http://localhost:5173/" would never match.
+            normalized.append(origin.rstrip("/"))
+        return normalized
+
+    @field_validator("log_level", mode="before")
+    @classmethod
+    def upper_case_log_level(cls, value: object) -> object:
+        return value.upper() if isinstance(value, str) else value
 
 
 @lru_cache

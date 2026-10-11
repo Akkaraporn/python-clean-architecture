@@ -14,6 +14,7 @@ SETTING_VARS = (
     "JWT_ALGORITHM",
     "JWT_EXPIRE_MINUTES",
     "CORS_ORIGINS",
+    "LOG_LEVEL",
 )
 
 
@@ -60,6 +61,7 @@ def test_optional_values_have_defaults(required_env: None) -> None:
     assert settings.jwt_algorithm == "HS256"
     assert settings.jwt_expire_minutes == 30
     assert settings.cors_origins == []
+    assert settings.log_level == "INFO"
 
 
 def test_reads_values_from_env_file(tmp_path: Path) -> None:
@@ -145,3 +147,27 @@ def test_secret_is_hidden_from_repr(required_env: None) -> None:
 
 def test_get_settings_is_cached(required_env: None) -> None:
     assert get_settings() is get_settings()
+
+
+def test_cors_origins_drop_trailing_slash(
+    required_env: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CORS_ORIGINS", "http://localhost:5173/,https://app.example.com")
+
+    assert load().cors_origins == ["http://localhost:5173", "https://app.example.com"]
+
+
+@pytest.mark.parametrize("value", ["*", "http://ok.example.com,*", "localhost:5173"])
+def test_cors_origins_must_be_explicit_urls(
+    required_env: None, monkeypatch: pytest.MonkeyPatch, value: str
+) -> None:
+    monkeypatch.setenv("CORS_ORIGINS", value)
+
+    with pytest.raises(ValidationError):
+        load()
+
+
+def test_log_level_is_case_insensitive(required_env: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LOG_LEVEL", "debug")
+
+    assert load().log_level == "DEBUG"
