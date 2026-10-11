@@ -1,4 +1,4 @@
-import { Link, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet } from 'react-router-dom'
 
 import { useAuth } from '../features/auth'
 
@@ -11,7 +11,15 @@ export function AppLayout() {
         <Link to="/" className="brand">
           Clean Architecture Demo
         </Link>
-        {status === 'authenticated' && user && <span className="muted">{user.email}</span>}
+        <nav aria-label="บัญชีผู้ใช้" className="app-nav">
+          {status === 'authenticated' && user && <span className="muted">{user.email}</span>}
+          {status === 'unauthenticated' && (
+            <>
+              <NavLink to="/login">เข้าสู่ระบบ</NavLink>
+              <NavLink to="/register">สมัครสมาชิก</NavLink>
+            </>
+          )}
+        </nav>
       </header>
       <main className="app-main">
         <Outlet />
