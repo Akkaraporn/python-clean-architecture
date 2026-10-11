@@ -33,6 +33,22 @@ services:
         # Wait for pg_isready, not just for the container to exist.
         condition: service_healthy
     restart: unless-stopped
+    # Health comes from the HEALTHCHECK in backend/Dockerfile.
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # The browser calls the API directly, so this is the API address as seen from
+        # the user's machine (published port), not the in-network name "backend".
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    ports:
+      # Must match an origin in CORS_ORIGINS.
+      - "${FRONTEND_PORT:-5173}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   pgdata:

@@ -1,0 +1,9 @@
+# Keep the build context small and free of local state or secrets.
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+Dockerfile
+.dockerignore
