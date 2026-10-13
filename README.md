@@ -3,7 +3,7 @@
 User registration and JWT authentication, built with Clean Architecture.
 
 This project is a Python rewrite of the Go template
-[golang-clean-code-architecture](https://github.com/Akkaraporn/golang-clean-code-architecture)
+[golang-clean-code-architecture](https://github.com/max38/golang-clean-code-architecture)
 (GoFiber + GORM + PostgreSQL). It keeps the same layer names and the same feature
 (register, log in, read your own profile) and adds a React front end.
 
